@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "pysystemair"
-version = "0.1.2"
+version = "0.2.0"
 description = "Python package to interface a SystamAir SAVE VTR ventilation through modbus. Heavily insipired by pyflexit (https://github.com/Sabesto/pyflexit). Made with the purpose of working with a home assistant component"
 authors = ["mvheimburg <heimburg@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.8"
 mypy = "^0.971"
 asyncio = "^3.4.3"
 pydantic = "^1.9.1"
