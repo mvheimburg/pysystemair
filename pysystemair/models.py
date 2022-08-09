@@ -1,13 +1,17 @@
 from pydantic import BaseModel
-from typing import Optional, Awaitable
+from typing import Optional
+from functools import partial
 from .const import REG_TYPE
 
 from box import Box
 
 class Callbacks(BaseModel):
-    holding_reg: Awaitable
-    input_reg: Awaitable
-    write_reg: Awaitable
+    holding_reg: partial
+    input_reg: partial
+    write_reg: partial
+
+    class Config:
+        arbitrary_types_allowed = True
 
 class Register(BaseModel):
     addr: int

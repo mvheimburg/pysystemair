@@ -40,5 +40,6 @@ USER_MODES = {
     5: SA_OPERATION_MODE_IDLE,
     6: SA_OPERATION_MODE_HOLIDAY,
 }
+REVERSED_USER_MODES = {v: k for k, v in USER_MODES.items()}
 
 ATTR_HUMIDITY: Final = "humidity"

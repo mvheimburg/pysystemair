@@ -2,15 +2,9 @@ from typing import Awaitable, Callable
 from functools import partial
 import logging
 _LOGGER = logging.getLogger(__name__)
-from inspect import iscoroutinefunction
 
 from .const import *
-from .models import (
-     InputRegister
-    ,HoldingRegister
-    ,Register
-    ,Callbacks
-)
+from .models import Callbacks, Register
 from .registers import registers
 
 
@@ -20,6 +14,7 @@ class PySystemAir():
     _async_callbacks: Callbacks
 
     def __init__(self, async_callbacks:Callbacks=None):
+        _LOGGER.info(f"New SYSTEMAIR MODULE")
         if async_callbacks is not None:
             self._async_callbacks=async_callbacks
         else:
@@ -31,15 +26,15 @@ class PySystemAir():
                       baudrate=56000,
                       timeout=2)
             client.connect()
-            client.read_holding_registers()
+            # client.read_holding_registers()
             # holding_reg_callback=partial(client.read_holding_registers, 
             self._async_callbacks = Callbacks(holding_reg=client.read_holding_registers, input_reg=client.read_input_registers, write_reg=client.write_register)
             # callbacks_accepted=True
             # if iscoroutinefunction(async_callbacks['holding_reg']):
-            #     self._async_callback.holding_reg=async_callbacks['holding_reg']
+            #     self._async_callbacks.holding_reg=async_callbacks['holding_reg']
             # else
-            # self._async_callback.input_reg=async_callback_input_reg
-            # self._async_callback.write_reg=async_callback_write_reg
+            # self._async_callbacks.input_reg=async_callback_input_reg
+            # self._async_callbacks.write_reg=async_callback_write_reg
 
         # registers = RegMap
 
@@ -57,9 +52,9 @@ class PySystemAir():
                 await self.async_update_from_register(key, register)
                 # result=None
                 # if register.reg_type == REG_TYPE.INPUT:
-                #     result = await self._async_callback.input_reg(address=register.addr)
+                #     result = await self._async_callbacks.input_reg(address=register.addr)
                 # elif register.reg_type == REG_TYPE.HOLDING:
-                #     result = await self._async_callback.holding_reg(address=register.addr)
+                #     result = await self._async_callbacks.holding_reg(address=register.addr)
                 # else:
                 #     _LOGGER.warning(f"register.reg_type not matched")
                 # # _LOGGER.warning(f"result= {result}")
@@ -70,25 +65,25 @@ class PySystemAir():
             except AttributeError:
                  _LOGGER.warning(f"Modbus read failed for {key}")
 
-    async def async_update_from_register(self, key, register):
+    async def async_update_from_register(self, key, register:Register):
         """
         Updates all of the input and holding regs dict values.
         """
         try:
             result=None
-            _LOGGER.warning(f"register.addr == {register.addr}")
-            _LOGGER.warning(f"register.reg_type == {register.reg_type}")
+            # _LOGGER.warning(f"register.addr == {register.addr}")
+            # _LOGGER.warning(f"register.reg_type == {register.reg_type}")
             if register.reg_type == REG_TYPE.INPUT:
-                _LOGGER.warning(f"calling {self._async_callback.input_reg}")
-                result = await self._async_callback.input_reg(address=register.addr)
+                # _LOGGER.warning(f"calling {self._async_callbacks.input_reg}")
+                result = await self._async_callbacks.input_reg(address=register.addr)
             elif register.reg_type == REG_TYPE.HOLDING:
-                _LOGGER.warning(f"calling {self._async_callback.holding_reg}")
-                result = await self._async_callback.holding_reg(address=register.addr)
+                # _LOGGER.warning(f"calling {self._async_callbacks.holding_reg}")
+                result = await self._async_callbacks.holding_reg(address=register.addr)
 
             if result is None:
                  _LOGGER.warning(f"Error reading {key} value from SystemAir modbus adapter")
             else:
-                _LOGGER.warning(f"{key} value is {result.registers[0]}")
+                # _LOGGER.warning(f"{key} value is {result.registers[0]}")
                 register.value = result.registers[0]
         except AttributeError as e:
             raise e
@@ -98,11 +93,15 @@ class PySystemAir():
         """
         Updates all of the input and holding regs dict values.
         """
+        # TODO: if register.reg_type != REG_TYPE.HOLDING:
+        #     raise ERROR
+        _LOGGER.warning(f"async_write_to_register") 
         try:
-            if await self._async_callback.write_reg(address=register.addr, value=value):
-                    register.value = value
+            if await self._async_callbacks.write_reg(address=register.addr, value=value):
+                _LOGGER.warning(f"Successfully set {value} to register {register.addr}") 
+                register.value = value
             else:
-                _LOGGER.error(f"Unable to write {variable} to SystemAir modbus interface") 
+                _LOGGER.error(f"Unable to write {value} to register {register.addr}") 
         except AttributeError as e:
             raise e
 
@@ -112,16 +111,34 @@ class PySystemAir():
     #     return list( USER_MODES.values())
 
 
+    @property
+    def user_mode(self) -> int:
+        """Return the fan setting."""
+        if registers.usermode_.value is None:
+            return 1
+        return registers.usermode_.value
 
 
     @property
-    def fan_mode(self):
+    def fan_mode(self) -> 0:
         """Return the fan setting."""
         if registers.saf_usermode_fs.value is None:
             return 3
         return registers.saf_usermode_fs.value
 
+    @property
+    def saf_speed(self):
+        """Return the fan setting."""
+        if registers.saf_speed_.value is None:
+            return 0
+        return registers.saf_speed_.value
 
+    @property
+    def eaf_speed(self):
+        """Return the fan setting."""
+        if registers.eaf_speed_.value is None:
+            return 0
+        return registers.eaf_speed_.value
 
     @property
     def filter_hours(self):
@@ -223,17 +240,44 @@ class PySystemAir():
         return registers.pdm_humidity_sensor.value
 
     @property
+    def humidity_transfer_enabled(self):
+        """Return the temperature we try to reach."""
+        if registers.humidity_transfer_enabled.value is None:
+            return 0
+        return registers.humidity_transfer_enabled.value
+
+    @property
     def target_humidity(self):
         """Return the temperature we try to reach."""
         if registers.target_humidity.value is None:
             return 0
         return registers.target_humidity.value
 
+    @property
+    def target_co2_ppm(self):
+        """Return the current_co2_ppm meas."""
+        if registers.target_co2_ppm_.value is None:
+            return 0
+        return registers.target_co2_ppm_.value
 
-    async def async_set_temperature(self, value):
-        """Set new target temperature."""
-        await self.async_write_to_register(registers.target_temperature, value)
+    @property
+    def feedback_co2_ppm(self):
+        """Return the current_co2_ppm meas."""
+        if registers.current_co2_ppm.value is None:
+            return 0
+        return registers.current_co2_ppm.value
 
+    @property
+    def current_co2_ppm(self):
+        """Return the current_co2_ppm meas."""
+        if registers.co2_sensor.value is None:
+            return 0
+        return registers.co2_sensor.value
+
+    async def async_set_user_mode(self, value:str):
+        """Set new fan mode."""
+        value = int(REVERSED_USER_MODES[value])
+        await self.async_write_to_register(registers.usermode, value)
 
     async def async_set_fan_mode(self, value):
         """Set new fan mode."""
@@ -241,8 +285,28 @@ class PySystemAir():
         await self.async_write_to_register(registers.saf_usermode_fs, value)
         await self.async_write_to_register(registers.eaf_usermode_fs, value)
 
-
-    async def async_set_humidity(self, value):
+    async def async_set_temperature(self, value):
         """Set new target temperature."""
-        target_humidity=int(round(value))
-        
+        await self.async_write_to_register(registers.target_temperature, value)
+
+
+    async def async_set_humidity(self, value:int):
+        """Set new target temperature."""
+        value=int(round(value))
+        await self.async_write_to_register(registers.target_humidity, value)
+
+    async def async_set_target_cotwo(self, value:int):
+        """Set new target temperature."""
+        _LOGGER.error(f"Calling async_set_target_cotwo with value {value}") 
+        await self.async_write_to_register(registers.target_co2_ppm, value)
+
+    async def async_set_cotwo_meas(self, value:int):
+        """Set new target temperature."""
+        _LOGGER.error(f"Calling async_cotwo_meas with value {value}") 
+        await self.async_write_to_register(registers.co2_sensor, value)
+
+
+    async def async_set_free_cooling(self, state:bool):
+        """Set new target temperature."""
+        _LOGGER.error(f"Calling async_set_free_cooling with state {state}") 
+        await self.async_write_to_register(registers.free_cooling_enabled, state)
